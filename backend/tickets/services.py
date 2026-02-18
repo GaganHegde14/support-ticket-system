@@ -1,4 +1,4 @@
-"""LLM classification service using OpenAI API."""
+"""LLM classification service using Google Gemini API."""
 import json
 import logging
 
@@ -27,34 +27,31 @@ SYSTEM_PROMPT = (
 
 def classify_ticket(description: str) -> dict:
     """
-    Classify a ticket description using OpenAI API.
+    Classify a ticket description using Google Gemini API.
 
     Returns a dict with 'suggested_category' and 'suggested_priority'.
     Falls back to general/low on any failure.
     """
-    api_key = settings.OPENAI_API_KEY
+    api_key = getattr(settings, "GEMINI_API_KEY", None)
 
     if not api_key:
-        logger.warning("OPENAI_API_KEY not configured, returning fallback classification.")
+        logger.warning("GEMINI_API_KEY not configured, returning fallback classification.")
         return FALLBACK_RESPONSE.copy()
 
     try:
-        import openai
+        import google.generativeai as genai
 
-        client = openai.OpenAI(api_key=api_key)
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel("gemini-1.5-flash")
 
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": description},
-            ],
-            temperature=0.1,
-            max_tokens=100,
-            response_format={"type": "json_object"},
-        )
+        prompt = f"{SYSTEM_PROMPT}\n\nTicket description:\n{description}"
+        response = model.generate_content(prompt)
 
-        content = response.choices[0].message.content.strip()
+        content = response.text.strip()
+        # Strip markdown code fences if present
+        if content.startswith("```"):
+            content = content.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
+
         parsed = json.loads(content)
 
         category = parsed.get("category", "").lower().strip()
