@@ -20,6 +20,7 @@ INSTALLED_APPS = [
     # Third party
     'rest_framework',
     'corsheaders',
+    'django_filters',
     # Local
     'tickets',
 ]
@@ -96,8 +97,12 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.AllowAny',
     ],
+    'DEFAULT_FILTER_BACKENDS': [
+        'django_filters.rest_framework.DjangoFilterBackend',
+        'rest_framework.filters.SearchFilter',
+    ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 100
+    'PAGE_SIZE': 50,
 }
 
 # CORS
@@ -107,5 +112,20 @@ CORS_ALLOW_ALL_ORIGINS = True # For development simplicity
 #     "http://localhost:5173",
 # ]
 
-# Gemini
-GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
+# Gemini LLM API Key
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
+
+# Logging
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+}
