@@ -112,8 +112,8 @@ CORS_ALLOW_ALL_ORIGINS = True # For development simplicity
 #     "http://localhost:5173",
 # ]
 
-# Gemini LLM API Key
-GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
+# Groq LLM API Key
+GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')
 
 # Logging
 LOGGING = {

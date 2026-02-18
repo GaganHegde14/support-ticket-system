@@ -1,6 +1,6 @@
-"""LLM classification service using Google Gemini API.
+"""LLM classification service using Groq API.
 
-Uses Gemini 1.5 Flash for fast, cost-effective ticket classification.
+Uses Groq (Llama 3.3 70B) for fast, cost-effective ticket classification.
 The prompt instructs the model to return a JSON object with category and priority.
 All failures are handled gracefully — the system falls back to safe defaults.
 """
@@ -45,27 +45,31 @@ CLASSIFICATION_PROMPT = (
 
 def classify_ticket(description: str) -> dict:
     """
-    Classify a ticket description using Google Gemini API.
+    Classify a ticket description using Groq API (Llama 3.3 70B).
 
     Returns a dict with 'suggested_category' and 'suggested_priority'.
     Falls back to general/low on any failure.
     """
-    api_key = getattr(settings, "GEMINI_API_KEY", None)
+    api_key = getattr(settings, "GROQ_API_KEY", None)
 
     if not api_key:
-        logger.warning("GEMINI_API_KEY not configured, returning fallback classification.")
+        logger.warning("GROQ_API_KEY not configured, returning fallback classification.")
         return FALLBACK_RESPONSE.copy()
 
     try:
-        import google.generativeai as genai
+        from groq import Groq
 
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-2.0-flash")
+        client = Groq(api_key=api_key)
 
         prompt = f"{CLASSIFICATION_PROMPT}\n\nTicket description:\n{description}"
-        response = model.generate_content(prompt)
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.1,
+            max_tokens=100,
+        )
 
-        content = response.text.strip()
+        content = response.choices[0].message.content.strip()
         # Strip markdown code fences if the model wraps its response
         if content.startswith("```"):
             content = content.split("\n", 1)[-1].rsplit("```", 1)[0].strip()

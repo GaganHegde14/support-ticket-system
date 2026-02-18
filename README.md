@@ -4,14 +4,14 @@ A full-stack support ticket management system with AI-powered classification, bu
 
 ## Architecture
 
-| Layer             | Technology              | Purpose                                       |
-| ----------------- | ----------------------- | --------------------------------------------- |
-| **Backend**       | Django 4.2 + DRF        | REST API, business logic, ORM                 |
-| **Frontend**      | React 18                | SPA with functional components & hooks        |
-| **Database**      | PostgreSQL 15           | Persistent storage with enforced constraints  |
-| **LLM**           | Google Gemini 1.5 Flash | Automatic ticket classification               |
-| **Proxy**         | Nginx                   | Serves React build, proxies `/api/` to Django |
-| **Orchestration** | Docker Compose          | Single-command deployment                     |
+| Layer             | Technology           | Purpose                                       |
+| ----------------- | -------------------- | --------------------------------------------- |
+| **Backend**       | Django 4.2 + DRF     | REST API, business logic, ORM                 |
+| **Frontend**      | React 18             | SPA with functional components & hooks        |
+| **Database**      | PostgreSQL 15        | Persistent storage with enforced constraints  |
+| **LLM**           | Groq (Llama 3.3 70B) | Automatic ticket classification               |
+| **Proxy**         | Nginx                | Serves React build, proxies `/api/` to Django |
+| **Orchestration** | Docker Compose       | Single-command deployment                     |
 
 ## Quick Start
 
@@ -25,10 +25,10 @@ A full-stack support ticket management system with AI-powered classification, bu
 # Clone or navigate to the project directory
 cd support-ticket-system
 
-# (Optional) Set your Gemini API key for AI classification
-export GEMINI_API_KEY=your-key-here            # Linux/Mac
-set GEMINI_API_KEY=your-key-here               # Windows CMD
-$env:GEMINI_API_KEY="your-key-here"            # PowerShell
+# (Optional) Set your Groq API key for AI classification
+export GROQ_API_KEY=your-key-here              # Linux/Mac
+set GROQ_API_KEY=your-key-here                 # Windows CMD
+$env:GROQ_API_KEY="your-key-here"              # PowerShell
 
 # Build and start all services
 docker-compose up --build
@@ -40,30 +40,53 @@ Then open **http://localhost:3000** in your browser.
 - **Backend API**: http://localhost:8000/api/
 - **Django Admin**: http://localhost:8000/admin/
 
-> **No manual steps required.** Migrations run automatically on startup. The app is fully functional after `docker-compose up` — the LLM feature simply requires a valid Gemini API key.
+> **No manual steps required.** Migrations run automatically on startup. The app is fully functional after `docker-compose up` — the LLM feature simply requires a valid Groq API key.
 
-## LLM Integration — Why Gemini 1.5 Flash?
+## LLM Integration — Why Groq + Llama 3.3 70B?
 
-I chose **Google Gemini 1.5 Flash** for the classification service:
+I evaluated several LLM providers before selecting **Groq** with **Llama 3.3 70B Versatile**:
 
-- **Free tier available** — easy to test without billing setup
-- **Fast response times** (~200–500ms) — suitable for real-time classification as users type
-- **Good at structured output** — reliably returns JSON with category/priority
-- **Sufficient accuracy** — handles billing, technical, account, and general categories well
+### Why not Google Gemini?
+
+I initially implemented the classification service using **Google Gemini 1.5 Flash**. However, I ran into two critical issues:
+
+1. **Model deprecation** — `gemini-1.5-flash` was removed from the API (`404 not found`), requiring a switch to `gemini-2.0-flash`
+2. **Aggressive rate limiting** — Google's free tier quota (`limit: 0`) was exhausted almost immediately, even across new API keys and projects, making the feature effectively unusable during development and testing
+
+These issues made Gemini unreliable for a project that needs to be demonstrated and evaluated.
+
+### Why Groq?
+
+| Criteria          | Groq (Llama 3.3 70B)                         | Google Gemini                           | OpenAI GPT      |
+| ----------------- | -------------------------------------------- | --------------------------------------- | --------------- |
+| **Free tier**     | 30 req/min, 14,400/day                       | Exhausts quickly, `limit: 0` frequently | No free tier    |
+| **Speed**         | ~100–300ms (fastest inference)               | ~200–500ms                              | ~500–2000ms     |
+| **Model quality** | Llama 3.3 70B — excellent for classification | Good but access issues                  | Best but costly |
+| **Rate limits**   | Generous, never hit during testing           | Severely restrictive                    | Pay-per-token   |
+| **Reliability**   | Consistent uptime                            | Model deprecation risk                  | Stable          |
+| **Cost**          | Free for development                         | Free but unusable                       | $0.002+/request |
+
+**Key reasons for choosing Groq:**
+
+- **Extremely fast inference** — Groq's custom LPU hardware delivers ~100–300ms response times, making real-time classification feel instant as users type
+- **Generous free tier** — 30 requests/minute and 14,400 requests/day is more than enough for development, testing, and demo purposes
+- **No billing required** — sign up at https://console.groq.com, get an API key, and start using it immediately
+- **High-quality model** — Llama 3.3 70B Versatile is a state-of-the-art open model that handles structured JSON output reliably
+- **Simple SDK** — the `groq` Python package provides a clean, OpenAI-compatible API
 
 ### How it works
 
 1. User types a ticket description in the form
 2. After a debounced delay (800ms) or on blur, the frontend calls `POST /api/tickets/classify/` with the description
-3. The backend sends the description to Gemini with a carefully crafted prompt (see `backend/tickets/services.py`)
-4. Gemini returns a JSON `{"category": "...", "priority": "..."}` response
-5. The frontend pre-fills the Category and Priority dropdowns with the AI suggestions (shown with an "AI suggested" label)
+3. The backend sends the description to Groq's Llama 3.3 70B model with a carefully crafted prompt (see `backend/tickets/services.py`)
+4. The model returns a JSON `{"category": "...", "priority": "..."}` response
+5. The frontend pre-fills the Category and Priority dropdowns with the AI suggestions (shown with an "AI suggested" badge)
 6. The user can accept or override the suggestions before submitting
 
 ### Error handling
 
-- If `GEMINI_API_KEY` is not set → returns `{"suggested_category": "general", "suggested_priority": "low"}` as fallback
-- If the Gemini API is unreachable → catches exception, returns fallback
+- If `GROQ_API_KEY` is not set → returns `{"suggested_category": "general", "suggested_priority": "low"}` as fallback
+- If the Groq API is unreachable → catches exception, returns fallback
 - If the LLM returns unparseable JSON → catches `JSONDecodeError`, returns fallback
 - If the LLM returns invalid category/priority values → validates and falls back per field
 - Frontend: classify failure does not block the form — users simply pick manually
@@ -75,16 +98,17 @@ The prompt (in `services.py`) explicitly:
 - Lists all valid categories and priorities
 - Provides classification rules for each value (e.g., "billing: payment issues, invoices...")
 - Requests JSON-only output with no markdown or explanation
+- Uses `temperature=0.1` for deterministic, consistent classification
 - This avoids ambiguous output and simplifies parsing
 
 ## API Key Configuration
 
-The Gemini API key is configured via environment variable (never hardcoded):
+The Groq API key is configured via environment variable (never hardcoded):
 
 ### Option 1: Environment variable (recommended)
 
 ```bash
-export GEMINI_API_KEY=your-key-here
+export GROQ_API_KEY=your-key-here
 docker-compose up --build
 ```
 
@@ -93,14 +117,14 @@ docker-compose up --build
 Create a `.env` file in the project root:
 
 ```
-GEMINI_API_KEY=your-key-here
+GROQ_API_KEY=your-key-here
 ```
 
 ### Option 3: Direct in `docker-compose.yml`
 
 ```yaml
 environment:
-  GEMINI_API_KEY: your-key-here
+  GROQ_API_KEY: your-key-here
 ```
 
 > **If no key is provided**, the system still works — classification falls back to `category: general`, `priority: low`.
@@ -193,7 +217,7 @@ support-ticket-system/
 │   ├── requirements.txt
 │   ├── manage.py
 │   ├── config/
-│   │   ├── settings.py        # Django settings (DB, CORS, DRF, Gemini)
+│   │   ├── settings.py        # Django settings (DB, CORS, DRF, Groq)
 │   │   ├── urls.py
 │   │   └── wsgi.py
 │   └── tickets/
@@ -201,7 +225,7 @@ support-ticket-system/
 │       ├── serializers.py      # DRF serializers with validation
 │       ├── views.py            # ViewSet with stats & classify actions
 │       ├── filters.py          # django-filter FilterSet
-│       ├── services.py         # Gemini LLM classification logic + prompt
+│       ├── services.py         # Groq LLM classification logic + prompt
 │       ├── tests.py            # Model and API endpoint tests
 │       ├── urls.py             # DRF router
 │       ├── admin.py
