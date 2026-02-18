@@ -9,7 +9,7 @@ A production-ready support ticket management system with AI-powered classificati
 | **Backend** | Django 4.2 + DRF | REST API, business logic, ORM |
 | **Frontend** | React 18 | SPA with functional components & hooks |
 | **Database** | PostgreSQL 15 | Persistent storage with enforced constraints |
-| **LLM** | OpenAI GPT-4o-mini | Automatic ticket classification |
+| **LLM** | Google Gemini 1.5 Flash | Automatic ticket classification |
 | **Proxy** | Nginx | Serves React build, proxies `/api/` to Django |
 | **Orchestration** | Docker Compose | Single-command deployment |
 
@@ -25,10 +25,10 @@ A production-ready support ticket management system with AI-powered classificati
 # Clone or navigate to the project directory
 cd support-ticket-system
 
-# (Optional) Set your OpenAI API key for AI classification
-export OPENAI_API_KEY=sk-your-key-here        # Linux/Mac
-set OPENAI_API_KEY=sk-your-key-here            # Windows CMD
-$env:OPENAI_API_KEY="sk-your-key-here"         # PowerShell
+# (Optional) Set your Gemini API key for AI classification
+export GEMINI_API_KEY=your-key-here            # Linux/Mac
+set GEMINI_API_KEY=your-key-here               # Windows CMD
+$env:GEMINI_API_KEY="your-key-here"            # PowerShell
 
 # Build and start all services
 docker-compose up --build
@@ -42,27 +42,27 @@ Then open **http://localhost:3000** in your browser.
 
 > **No manual steps required.** Migrations run automatically on startup.
 
-## Adding the OpenAI API Key
+## Adding the Gemini API Key
 
-The AI classification feature requires an OpenAI API key. Three ways to provide it:
+The AI classification feature requires a Google Gemini API key. Three ways to provide it:
 
 ### Option 1: Environment variable (recommended)
 ```bash
-export OPENAI_API_KEY=sk-your-key-here
+export GEMINI_API_KEY=your-key-here
 docker-compose up --build
 ```
 
 ### Option 2: `.env` file
 Create a `.env` file in the project root:
 ```
-OPENAI_API_KEY=sk-your-key-here
+GEMINI_API_KEY=your-key-here
 ```
 
 ### Option 3: Direct in `docker-compose.yml`
 Edit the `backend` service environment section:
 ```yaml
 environment:
-  OPENAI_API_KEY: sk-your-key-here
+  GEMINI_API_KEY: your-key-here
 ```
 
 > **If no key is provided**, the system still works — classification falls back to `category: general`, `priority: low`.
@@ -120,10 +120,10 @@ All filters are combinable. Search queries both `title` and `description` fields
 - Robust aggregation support (`TruncDate`, conditional `Count`, `Avg`) — all stats computed with zero Python loops
 - Reliable, production-proven
 
-### Why GPT-4o-mini?
-- Cost-effective for classification tasks (fraction of GPT-4 cost)
+### Why Gemini 1.5 Flash?
+- Cost-effective for classification tasks (generous free tier)
 - Fast response times (~200-500ms)
-- Structured JSON output support via `response_format`
+- Structured JSON output support
 - Sufficient accuracy for category/priority classification
 - Graceful fallback: LLM failure never blocks ticket creation
 
@@ -154,7 +154,7 @@ support-ticket-system/
 │   ├── requirements.txt
 │   ├── manage.py
 │   ├── config/
-│   │   ├── settings.py        # Django settings (DB, CORS, DRF, OpenAI)
+│   │   ├── settings.py        # Django settings (DB, CORS, DRF, Gemini)
 │   │   ├── urls.py
 │   │   └── wsgi.py
 │   └── tickets/
