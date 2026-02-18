@@ -60,7 +60,7 @@ def classify_ticket(description: str) -> dict:
         import google.generativeai as genai
 
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        model = genai.GenerativeModel("gemini-2.0-flash")
 
         prompt = f"{CLASSIFICATION_PROMPT}\n\nTicket description:\n{description}"
         response = model.generate_content(prompt)

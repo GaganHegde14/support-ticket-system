@@ -64,7 +64,14 @@ export default function TicketList({ refreshKey }) {
     } finally {
       setLoading(false);
     }
-  }, [filters.category, filters.priority, filters.status, debouncedSearch, page, refreshKey]);
+  }, [
+    filters.category,
+    filters.priority,
+    filters.status,
+    debouncedSearch,
+    page,
+    refreshKey,
+  ]);
 
   useEffect(() => {
     load();
@@ -117,7 +124,11 @@ export default function TicketList({ refreshKey }) {
 
       {/* Filters */}
       <div className="filters-bar">
-        <select name="category" value={filters.category} onChange={handleFilterChange}>
+        <select
+          name="category"
+          value={filters.category}
+          onChange={handleFilterChange}
+        >
           <option value="">All Categories</option>
           {CATEGORIES.filter(Boolean).map((c) => (
             <option key={c} value={c}>
@@ -126,7 +137,11 @@ export default function TicketList({ refreshKey }) {
           ))}
         </select>
 
-        <select name="priority" value={filters.priority} onChange={handleFilterChange}>
+        <select
+          name="priority"
+          value={filters.priority}
+          onChange={handleFilterChange}
+        >
           <option value="">All Priorities</option>
           {PRIORITIES.filter(Boolean).map((p) => (
             <option key={p} value={p}>
@@ -135,7 +150,11 @@ export default function TicketList({ refreshKey }) {
           ))}
         </select>
 
-        <select name="status" value={filters.status} onChange={handleFilterChange}>
+        <select
+          name="status"
+          value={filters.status}
+          onChange={handleFilterChange}
+        >
           <option value="">All Statuses</option>
           {STATUSES.filter(Boolean).map((s) => (
             <option key={s} value={s}>
@@ -178,7 +197,9 @@ export default function TicketList({ refreshKey }) {
                   <span className={`badge badge-status-${t.status}`}>
                     {STATUS_LABELS[t.status] || t.status}
                   </span>
-                  <span className="ticket-time">{formatDate(t.created_at)}</span>
+                  <span className="ticket-time">
+                    {formatDate(t.created_at)}
+                  </span>
                 </div>
               </li>
             ))}
@@ -214,7 +235,9 @@ export default function TicketList({ refreshKey }) {
         <div className="modal-overlay" onClick={() => setSelectedTicket(null)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <h3>Update Status</h3>
-            <p style={{ marginBottom: 12, fontSize: "0.9rem", color: "#6c757d" }}>
+            <p
+              style={{ marginBottom: 12, fontSize: "0.9rem", color: "#6c757d" }}
+            >
               {selectedTicket.title}
             </p>
             <div className="form-group">

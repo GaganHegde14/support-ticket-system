@@ -4,14 +4,14 @@ A full-stack support ticket management system with AI-powered classification, bu
 
 ## Architecture
 
-| Layer | Technology | Purpose |
-|-------|-----------|---------|
-| **Backend** | Django 4.2 + DRF | REST API, business logic, ORM |
-| **Frontend** | React 18 | SPA with functional components & hooks |
-| **Database** | PostgreSQL 15 | Persistent storage with enforced constraints |
-| **LLM** | Google Gemini 1.5 Flash | Automatic ticket classification |
-| **Proxy** | Nginx | Serves React build, proxies `/api/` to Django |
-| **Orchestration** | Docker Compose | Single-command deployment |
+| Layer             | Technology              | Purpose                                       |
+| ----------------- | ----------------------- | --------------------------------------------- |
+| **Backend**       | Django 4.2 + DRF        | REST API, business logic, ORM                 |
+| **Frontend**      | React 18                | SPA with functional components & hooks        |
+| **Database**      | PostgreSQL 15           | Persistent storage with enforced constraints  |
+| **LLM**           | Google Gemini 1.5 Flash | Automatic ticket classification               |
+| **Proxy**         | Nginx                   | Serves React build, proxies `/api/` to Django |
+| **Orchestration** | Docker Compose          | Single-command deployment                     |
 
 ## Quick Start
 
@@ -71,6 +71,7 @@ I chose **Google Gemini 1.5 Flash** for the classification service:
 ### Prompt design
 
 The prompt (in `services.py`) explicitly:
+
 - Lists all valid categories and priorities
 - Provides classification rules for each value (e.g., "billing: payment issues, invoices...")
 - Requests JSON-only output with no markdown or explanation
@@ -81,18 +82,22 @@ The prompt (in `services.py`) explicitly:
 The Gemini API key is configured via environment variable (never hardcoded):
 
 ### Option 1: Environment variable (recommended)
+
 ```bash
 export GEMINI_API_KEY=your-key-here
 docker-compose up --build
 ```
 
 ### Option 2: `.env` file
+
 Create a `.env` file in the project root:
+
 ```
 GEMINI_API_KEY=your-key-here
 ```
 
 ### Option 3: Direct in `docker-compose.yml`
+
 ```yaml
 environment:
   GEMINI_API_KEY: your-key-here
@@ -102,13 +107,13 @@ environment:
 
 ## API Endpoints
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/api/tickets/` | Create a new ticket (returns `201`) |
-| `GET` | `/api/tickets/` | List tickets (filterable, searchable, paginated — newest first) |
-| `PATCH` | `/api/tickets/<id>/` | Update ticket status/category/priority |
-| `GET` | `/api/tickets/stats/` | Aggregated dashboard statistics |
-| `POST` | `/api/tickets/classify/` | AI-powered ticket classification |
+| Method  | Endpoint                 | Description                                                     |
+| ------- | ------------------------ | --------------------------------------------------------------- |
+| `POST`  | `/api/tickets/`          | Create a new ticket (returns `201`)                             |
+| `GET`   | `/api/tickets/`          | List tickets (filterable, searchable, paginated — newest first) |
+| `PATCH` | `/api/tickets/<id>/`     | Update ticket status/category/priority                          |
+| `GET`   | `/api/tickets/stats/`    | Aggregated dashboard statistics                                 |
+| `POST`  | `/api/tickets/classify/` | AI-powered ticket classification                                |
 
 ### Filtering & Search
 
@@ -145,6 +150,7 @@ The stats endpoint uses **database-level aggregation only** (`Count`, `Avg`, `Q`
 ## Design Decisions
 
 ### Data Model
+
 - All field choices use Django `TextChoices` enums for type safety
 - `CheckConstraint` on `category`, `priority`, and `status` fields enforces valid values at the database level
 - Individual indexes on filterable fields + composite indexes for common query patterns
@@ -152,6 +158,7 @@ The stats endpoint uses **database-level aggregation only** (`Count`, `Avg`, `Q`
 - `status` defaults to `open` at both model and DB level
 
 ### API Design
+
 - DRF `ModelViewSet` provides standard CRUD with proper HTTP status codes
 - `TicketUpdateSerializer` restricts PATCH to only `status`, `category`, `priority` (title/description are read-only after creation)
 - `ClassifyRequestSerializer` validates description length (10–5000 chars)
@@ -160,6 +167,7 @@ The stats endpoint uses **database-level aggregation only** (`Count`, `Avg`, `Q`
 - DRF `SearchFilter` for full-text search on title + description
 
 ### Frontend
+
 - Three main components: `TicketForm`, `TicketList`, `StatsDashboard`
 - `refreshKey` pattern ensures Stats and List auto-refresh when a new ticket is created (without full page reload)
 - Debounced search input prevents excessive API calls
@@ -169,6 +177,7 @@ The stats endpoint uses **database-level aggregation only** (`Count`, `Avg`, `Q`
 - Custom CSS with variables — no framework dependency
 
 ### Docker
+
 - **PostgreSQL**: `postgres:15-alpine` with healthcheck for startup ordering
 - **Backend**: `python:3.12-slim`, Gunicorn WSGI server, entrypoint runs `makemigrations` + `migrate` on every startup
 - **Frontend**: Multi-stage build (Node 18 build → Nginx 1.25 production), reverse proxy to backend

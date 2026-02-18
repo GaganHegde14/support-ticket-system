@@ -132,7 +132,8 @@ export default function TicketForm({ onTicketCreated }) {
 
         <div className="form-group">
           <label htmlFor="category">
-            Category {classified && <span className="ai-badge">AI suggested</span>}
+            Category{" "}
+            {classified && <span className="ai-badge">AI suggested</span>}
           </label>
           <select
             id="category"
@@ -150,7 +151,8 @@ export default function TicketForm({ onTicketCreated }) {
 
         <div className="form-group">
           <label htmlFor="priority">
-            Priority {classified && <span className="ai-badge">AI suggested</span>}
+            Priority{" "}
+            {classified && <span className="ai-badge">AI suggested</span>}
           </label>
           <select
             id="priority"
