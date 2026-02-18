@@ -2,6 +2,8 @@ django>=4.2,<5.0
 djangorestframework
 psycopg2-binary
 django-cors-headers
+django-filter
 google-generativeai
 python-dotenv
 dj-database-url
+gunicorn
