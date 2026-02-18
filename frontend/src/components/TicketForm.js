@@ -94,8 +94,8 @@ export default function TicketForm({ onTicketCreated }) {
     <div className="card">
       <h2>Create Ticket</h2>
       <form onSubmit={handleSubmit} noValidate>
-        {error && <p className="error-text">{error}</p>}
-        {success && <p className="success-text">{success}</p>}
+        {error && <p className="error-text">⚠ {error}</p>}
+        {success && <p className="success-text">✓ {success}</p>}
 
         <div className="form-group">
           <label htmlFor="title">Title *</label>
@@ -126,14 +126,14 @@ export default function TicketForm({ onTicketCreated }) {
         {classifying && (
           <div className="classification-banner">
             <div className="spinner-small" />
-            AI is classifying your ticket…
+            🤖 AI is classifying your ticket…
           </div>
         )}
 
         <div className="form-group">
           <label htmlFor="category">
             Category{" "}
-            {classified && <span className="ai-badge">AI suggested</span>}
+            {classified && <span className="ai-badge">✨ AI suggested</span>}
           </label>
           <select
             id="category"
@@ -152,7 +152,7 @@ export default function TicketForm({ onTicketCreated }) {
         <div className="form-group">
           <label htmlFor="priority">
             Priority{" "}
-            {classified && <span className="ai-badge">AI suggested</span>}
+            {classified && <span className="ai-badge">✨ AI suggested</span>}
           </label>
           <select
             id="priority"
@@ -173,7 +173,7 @@ export default function TicketForm({ onTicketCreated }) {
           className="btn btn-primary"
           disabled={submitting || classifying}
         >
-          {submitting ? "Creating…" : "Create Ticket"}
+          {submitting ? "Creating…" : "🚀 Create Ticket"}
         </button>
       </form>
     </div>

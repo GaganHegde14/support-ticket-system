@@ -173,9 +173,9 @@ export default function TicketList({ refreshKey }) {
 
       {/* Ticket List */}
       {loading ? (
-        <p className="loading-text">Loading tickets…</p>
+        <p className="loading-text">⏳ Loading tickets…</p>
       ) : tickets.length === 0 ? (
-        <p className="empty-text">No tickets found.</p>
+        <p className="empty-text">📭 No tickets found. Create one to get started!</p>
       ) : (
         <>
           <ul className="ticket-list">
@@ -235,11 +235,7 @@ export default function TicketList({ refreshKey }) {
         <div className="modal-overlay" onClick={() => setSelectedTicket(null)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <h3>Update Status</h3>
-            <p
-              style={{ marginBottom: 12, fontSize: "0.9rem", color: "#6c757d" }}
-            >
-              {selectedTicket.title}
-            </p>
+            <p>{selectedTicket.title}</p>
             <div className="form-group">
               <label htmlFor="modal-status">Status</label>
               <select

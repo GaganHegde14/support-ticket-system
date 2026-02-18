@@ -21,11 +21,18 @@ export default function StatsDashboard({ refreshKey }) {
     load();
   }, [load]);
 
-  if (loading) return <div className="card"><p className="loading-text">Loading stats…</p></div>;
+  if (loading) return <div className="card"><p className="loading-text">⏳ Loading stats…</p></div>;
   if (!stats) return <div className="card"><p className="empty-text">Unable to load statistics.</p></div>;
 
   const maxPriority = Math.max(1, ...Object.values(stats.priority_breakdown || {}));
   const maxCategory = Math.max(1, ...Object.values(stats.category_breakdown || {}));
+
+  const priorityColors = {
+    critical: "linear-gradient(90deg, #dc2626, #ef4444)",
+    high: "linear-gradient(90deg, #ef4444, #f87171)",
+    medium: "linear-gradient(90deg, #f59e0b, #fbbf24)",
+    low: "linear-gradient(90deg, #10b981, #34d399)",
+  };
 
   return (
     <div className="card">
@@ -42,7 +49,7 @@ export default function StatsDashboard({ refreshKey }) {
         </div>
         <div className="stat-card">
           <div className="stat-value">{stats.avg_tickets_per_day}</div>
-          <div className="stat-label">Avg/Day</div>
+          <div className="stat-label">Avg / Day</div>
         </div>
       </div>
 
@@ -57,14 +64,7 @@ export default function StatsDashboard({ refreshKey }) {
                 className="bar-fill"
                 style={{
                   width: `${(val / maxPriority) * 100}%`,
-                  background:
-                    key === "critical"
-                      ? "#c62828"
-                      : key === "high"
-                      ? "#e71d36"
-                      : key === "medium"
-                      ? "#ff9f1c"
-                      : "#2ec4b6",
+                  background: priorityColors[key] || "linear-gradient(90deg, #6366f1, #a78bfa)",
                 }}
               />
             </div>

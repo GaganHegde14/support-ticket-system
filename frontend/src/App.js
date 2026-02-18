@@ -13,9 +13,9 @@ export default function App() {
   return (
     <div className="app-container">
       <header className="app-header">
-        <h1>Support Ticket System</h1>
+        <h1>🎫 Support Ticket System</h1>
         <p>
-          Create, track, and manage support tickets with AI-powered
+          Create, track &amp; manage support tickets with AI-powered
           classification
         </p>
       </header>
