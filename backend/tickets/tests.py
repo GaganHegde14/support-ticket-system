@@ -16,7 +16,7 @@ class TicketModelTest(TestCase):
             priority="high",
         )
         self.assertEqual(ticket.status, "open")
-        self.assertEqual(str(ticket), "[High] Test ticket")
+        self.assertEqual(str(ticket), "Test ticket (open)")
 
     def test_default_ordering(self):
         t1 = Ticket.objects.create(
