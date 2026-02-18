@@ -16,6 +16,7 @@ export default function TicketForm({ onTicketCreated }) {
   const [classifying, setClassifying] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [classified, setClassified] = useState(false);
   const debounceRef = useRef(null);
 
@@ -23,8 +24,9 @@ export default function TicketForm({ onTicketCreated }) {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
     setError("");
+    setSuccess("");
 
-    // Auto-classify on description change
+    // Auto-classify when description is long enough (debounced)
     if (name === "description" && value.trim().length > 15) {
       if (debounceRef.current) clearTimeout(debounceRef.current);
       debounceRef.current = setTimeout(() => {
@@ -50,7 +52,7 @@ export default function TicketForm({ onTicketCreated }) {
       }));
       setClassified(true);
     } catch {
-      // LLM failure should not block anything
+      // LLM failure is non-blocking — user keeps manual control
     } finally {
       setClassifying(false);
     }
@@ -59,6 +61,7 @@ export default function TicketForm({ onTicketCreated }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setSuccess("");
 
     if (!form.title.trim()) {
       setError("Title is required.");
@@ -74,6 +77,7 @@ export default function TicketForm({ onTicketCreated }) {
       await createTicket(form);
       setForm(INITIAL_STATE);
       setClassified(false);
+      setSuccess("Ticket created successfully!");
       if (onTicketCreated) onTicketCreated();
     } catch (err) {
       const detail =
@@ -91,6 +95,7 @@ export default function TicketForm({ onTicketCreated }) {
       <h2>Create Ticket</h2>
       <form onSubmit={handleSubmit} noValidate>
         {error && <p className="error-text">{error}</p>}
+        {success && <p className="success-text">{success}</p>}
 
         <div className="form-group">
           <label htmlFor="title">Title *</label>
@@ -121,12 +126,14 @@ export default function TicketForm({ onTicketCreated }) {
         {classifying && (
           <div className="classification-banner">
             <div className="spinner-small" />
-            Classifying with AI…
+            AI is classifying your ticket…
           </div>
         )}
 
         <div className="form-group">
-          <label htmlFor="category">Category</label>
+          <label htmlFor="category">
+            Category {classified && <span className="ai-badge">AI suggested</span>}
+          </label>
           <select
             id="category"
             name="category"
@@ -142,7 +149,9 @@ export default function TicketForm({ onTicketCreated }) {
         </div>
 
         <div className="form-group">
-          <label htmlFor="priority">Priority</label>
+          <label htmlFor="priority">
+            Priority {classified && <span className="ai-badge">AI suggested</span>}
+          </label>
           <select
             id="priority"
             name="priority"

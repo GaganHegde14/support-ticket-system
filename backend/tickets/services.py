@@ -1,10 +1,13 @@
-"""LLM classification service using Google Gemini API."""
+"""LLM classification service using Google Gemini API.
+
+Uses Gemini 1.5 Flash for fast, cost-effective ticket classification.
+The prompt instructs the model to return a JSON object with category and priority.
+All failures are handled gracefully — the system falls back to safe defaults.
+"""
 import json
 import logging
 
 from django.conf import settings
-
-from .models import Ticket
 
 logger = logging.getLogger(__name__)
 
@@ -13,14 +16,29 @@ FALLBACK_RESPONSE = {
     "suggested_priority": "low",
 }
 
-VALID_CATEGORIES = {c.value for c in Ticket.Category}
-VALID_PRIORITIES = {p.value for p in Ticket.Priority}
+VALID_CATEGORIES = {"billing", "technical", "account", "general"}
+VALID_PRIORITIES = {"low", "medium", "high", "critical"}
 
-SYSTEM_PROMPT = (
-    "You are a support ticket classifier. "
-    "Classify the issue into one of: billing, technical, account, general. "
-    "Assign priority: low, medium, high, critical. "
-    "Respond ONLY in JSON:\n"
+# Prompt design:
+# - Explicit list of valid categories and priorities to constrain output
+# - JSON-only response format to simplify parsing
+# - Clear role assignment for consistent behavior
+CLASSIFICATION_PROMPT = (
+    "You are a support ticket classifier for a software company.\n"
+    "Given a ticket description, classify it into exactly one category "
+    "and assign a priority level.\n\n"
+    "Categories (pick one): billing, technical, account, general\n"
+    "Priority levels (pick one): low, medium, high, critical\n\n"
+    "Rules:\n"
+    "- billing: payment issues, invoices, charges, subscriptions, refunds\n"
+    "- technical: bugs, errors, crashes, performance, API issues\n"
+    "- account: login problems, password resets, profile, permissions\n"
+    "- general: everything else\n"
+    "- critical: system down, data loss, security breach\n"
+    "- high: major feature broken, blocking issue\n"
+    "- medium: degraded functionality, workaround exists\n"
+    "- low: minor issue, cosmetic, feature request\n\n"
+    "Respond with ONLY a JSON object (no markdown, no explanation):\n"
     '{"category": "...", "priority": "..."}'
 )
 
@@ -44,11 +62,11 @@ def classify_ticket(description: str) -> dict:
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel("gemini-1.5-flash")
 
-        prompt = f"{SYSTEM_PROMPT}\n\nTicket description:\n{description}"
+        prompt = f"{CLASSIFICATION_PROMPT}\n\nTicket description:\n{description}"
         response = model.generate_content(prompt)
 
         content = response.text.strip()
-        # Strip markdown code fences if present
+        # Strip markdown code fences if the model wraps its response
         if content.startswith("```"):
             content = content.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
 

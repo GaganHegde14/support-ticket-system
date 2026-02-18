@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { fetchTickets, updateTicket } from "../api";
 
 const CATEGORIES = ["", "billing", "technical", "account", "general"];
@@ -37,6 +37,8 @@ export default function TicketList({ refreshKey }) {
     status: "",
     search: "",
   });
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const searchTimerRef = useRef(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [selectedTicket, setSelectedTicket] = useState(null);
@@ -50,7 +52,7 @@ export default function TicketList({ refreshKey }) {
       if (filters.category) params.category = filters.category;
       if (filters.priority) params.priority = filters.priority;
       if (filters.status) params.status = filters.status;
-      if (filters.search) params.search = filters.search;
+      if (debouncedSearch) params.search = debouncedSearch;
 
       const { data } = await fetchTickets(params);
       setTickets(data.results || data);
@@ -62,7 +64,7 @@ export default function TicketList({ refreshKey }) {
     } finally {
       setLoading(false);
     }
-  }, [filters, page, refreshKey]);
+  }, [filters.category, filters.priority, filters.status, debouncedSearch, page, refreshKey]);
 
   useEffect(() => {
     load();
@@ -71,11 +73,20 @@ export default function TicketList({ refreshKey }) {
   // Reset to page 1 when filters change
   useEffect(() => {
     setPage(1);
-  }, [filters]);
+  }, [filters.category, filters.priority, filters.status, debouncedSearch]);
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
-    setFilters((prev) => ({ ...prev, [name]: value }));
+    if (name === "search") {
+      setFilters((prev) => ({ ...prev, search: value }));
+      // Debounce search input to avoid excessive API calls
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+      searchTimerRef.current = setTimeout(() => {
+        setDebouncedSearch(value);
+      }, 400);
+    } else {
+      setFilters((prev) => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleTicketClick = (ticket) => {

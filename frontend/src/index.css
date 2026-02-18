@@ -457,6 +457,23 @@ body {
   margin-bottom: 8px;
 }
 
+.success-text {
+  color: var(--color-success);
+  font-size: 0.85rem;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.ai-badge {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--color-primary);
+  background: #eef2ff;
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-left: 6px;
+}
+
 /* ───────────────── Pagination ───────────────── */
 .pagination {
   display: flex;

@@ -1,6 +1,6 @@
 # Support Ticket System
 
-A production-ready support ticket management system with AI-powered classification, built with Django REST Framework, React, PostgreSQL, and Docker.
+A full-stack support ticket management system with AI-powered classification, built with **Django REST Framework**, **React**, **PostgreSQL**, and **Docker**.
 
 ## Architecture
 
@@ -40,11 +40,45 @@ Then open **http://localhost:3000** in your browser.
 - **Backend API**: http://localhost:8000/api/
 - **Django Admin**: http://localhost:8000/admin/
 
-> **No manual steps required.** Migrations run automatically on startup.
+> **No manual steps required.** Migrations run automatically on startup. The app is fully functional after `docker-compose up` — the LLM feature simply requires a valid Gemini API key.
 
-## Adding the Gemini API Key
+## LLM Integration — Why Gemini 1.5 Flash?
 
-The AI classification feature requires a Google Gemini API key. Three ways to provide it:
+I chose **Google Gemini 1.5 Flash** for the classification service:
+
+- **Free tier available** — easy to test without billing setup
+- **Fast response times** (~200–500ms) — suitable for real-time classification as users type
+- **Good at structured output** — reliably returns JSON with category/priority
+- **Sufficient accuracy** — handles billing, technical, account, and general categories well
+
+### How it works
+
+1. User types a ticket description in the form
+2. After a debounced delay (800ms) or on blur, the frontend calls `POST /api/tickets/classify/` with the description
+3. The backend sends the description to Gemini with a carefully crafted prompt (see `backend/tickets/services.py`)
+4. Gemini returns a JSON `{"category": "...", "priority": "..."}` response
+5. The frontend pre-fills the Category and Priority dropdowns with the AI suggestions (shown with an "AI suggested" label)
+6. The user can accept or override the suggestions before submitting
+
+### Error handling
+
+- If `GEMINI_API_KEY` is not set → returns `{"suggested_category": "general", "suggested_priority": "low"}` as fallback
+- If the Gemini API is unreachable → catches exception, returns fallback
+- If the LLM returns unparseable JSON → catches `JSONDecodeError`, returns fallback
+- If the LLM returns invalid category/priority values → validates and falls back per field
+- Frontend: classify failure does not block the form — users simply pick manually
+
+### Prompt design
+
+The prompt (in `services.py`) explicitly:
+- Lists all valid categories and priorities
+- Provides classification rules for each value (e.g., "billing: payment issues, invoices...")
+- Requests JSON-only output with no markdown or explanation
+- This avoids ambiguous output and simplifies parsing
+
+## API Key Configuration
+
+The Gemini API key is configured via environment variable (never hardcoded):
 
 ### Option 1: Environment variable (recommended)
 ```bash
@@ -59,7 +93,6 @@ GEMINI_API_KEY=your-key-here
 ```
 
 ### Option 3: Direct in `docker-compose.yml`
-Edit the `backend` service environment section:
 ```yaml
 environment:
   GEMINI_API_KEY: your-key-here
@@ -71,8 +104,8 @@ environment:
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/api/tickets/` | Create a new ticket |
-| `GET` | `/api/tickets/` | List tickets (filterable, searchable, paginated) |
+| `POST` | `/api/tickets/` | Create a new ticket (returns `201`) |
+| `GET` | `/api/tickets/` | List tickets (filterable, searchable, paginated — newest first) |
 | `PATCH` | `/api/tickets/<id>/` | Update ticket status/category/priority |
 | `GET` | `/api/tickets/stats/` | Aggregated dashboard statistics |
 | `POST` | `/api/tickets/classify/` | AI-powered ticket classification |
@@ -83,7 +116,7 @@ environment:
 GET /api/tickets/?category=billing&priority=high&status=open&search=payment
 ```
 
-All filters are combinable. Search queries both `title` and `description` fields.
+All filters (`?category=`, `?priority=`, `?status=`, `?search=`) are combinable. Search queries both `title` and `description` fields.
 
 ### Stats Response Format
 
@@ -107,42 +140,39 @@ All filters are combinable. Search queries both `title` and `description` fields
 }
 ```
 
+The stats endpoint uses **database-level aggregation only** (`Count`, `Avg`, `Q`, `TruncDate`) — no Python-level loops.
+
 ## Design Decisions
 
-### Why Django + DRF?
-- Mature ORM with native PostgreSQL support
-- Built-in model validation and DB-level constraints (`CheckConstraint`)
-- DRF provides serializers, viewsets, filtering, and pagination out of the box
-- `django-filter` and `SearchFilter` integrate seamlessly for combinable filtering
+### Data Model
+- All field choices use Django `TextChoices` enums for type safety
+- `CheckConstraint` on `category`, `priority`, and `status` fields enforces valid values at the database level
+- Individual indexes on filterable fields + composite indexes for common query patterns
+- `title` is `CharField(max_length=200)`, `description` is `TextField` — both required (no `blank=True`, no `null=True`)
+- `status` defaults to `open` at both model and DB level
 
-### Why PostgreSQL?
-- `CheckConstraint` enforcement at DB level ensures data integrity regardless of entry point
-- Robust aggregation support (`TruncDate`, conditional `Count`, `Avg`) — all stats computed with zero Python loops
-- Reliable, production-proven
+### API Design
+- DRF `ModelViewSet` provides standard CRUD with proper HTTP status codes
+- `TicketUpdateSerializer` restricts PATCH to only `status`, `category`, `priority` (title/description are read-only after creation)
+- `ClassifyRequestSerializer` validates description length (10–5000 chars)
+- Pagination at 50 items per page
+- `django-filter` `FilterSet` for exact-match filtering on category/priority/status
+- DRF `SearchFilter` for full-text search on title + description
 
-### Why Gemini 1.5 Flash?
-- Cost-effective for classification tasks (generous free tier)
-- Fast response times (~200-500ms)
-- Structured JSON output support
-- Sufficient accuracy for category/priority classification
-- Graceful fallback: LLM failure never blocks ticket creation
+### Frontend
+- Three main components: `TicketForm`, `TicketList`, `StatsDashboard`
+- `refreshKey` pattern ensures Stats and List auto-refresh when a new ticket is created (without full page reload)
+- Debounced search input prevents excessive API calls
+- Debounced LLM classification triggers as the user types (800ms delay)
+- Modal for status updates — click any ticket to change status
+- All state management via React hooks (no external state library needed)
+- Custom CSS with variables — no framework dependency
 
-### Why Nginx for Frontend?
-- Production-grade static file serving (gzip, caching headers)
-- Reverse proxy to Django eliminates CORS issues entirely in production
-- Single port (3000) serves both frontend and API
-
-### Database Indexing Strategy
-- Individual indexes on `category`, `priority`, `status`, `created_at` for filtered queries
-- Composite index on `(category, priority)` for combined filter queries
-- Composite index on `(status, created_at)` for dashboard queries
-- `title` indexed for search performance
-
-### Error Handling Philosophy
-- LLM failures return safe fallback values, never block user actions
-- Django model constraints prevent invalid data at every level (serializer → model → DB)
-- Frontend validates inputs before submission with clear error messages
-- All API endpoints return meaningful HTTP status codes
+### Docker
+- **PostgreSQL**: `postgres:15-alpine` with healthcheck for startup ordering
+- **Backend**: `python:3.12-slim`, Gunicorn WSGI server, entrypoint runs `makemigrations` + `migrate` on every startup
+- **Frontend**: Multi-stage build (Node 18 build → Nginx 1.25 production), reverse proxy to backend
+- `depends_on` with `condition: service_healthy` ensures DB is ready before Django starts
 
 ## Project Structure
 
@@ -150,7 +180,7 @@ All filters are combinable. Search queries both `title` and `description` fields
 support-ticket-system/
 ├── backend/
 │   ├── Dockerfile
-│   ├── entrypoint.sh          # Runs migrations, starts Gunicorn
+│   ├── entrypoint.sh          # DB wait, migrations, starts Gunicorn
 │   ├── requirements.txt
 │   ├── manage.py
 │   ├── config/
@@ -158,11 +188,12 @@ support-ticket-system/
 │   │   ├── urls.py
 │   │   └── wsgi.py
 │   └── tickets/
-│       ├── models.py           # Ticket model with DB constraints
+│       ├── models.py           # Ticket model with TextChoices + DB constraints
 │       ├── serializers.py      # DRF serializers with validation
 │       ├── views.py            # ViewSet with stats & classify actions
 │       ├── filters.py          # django-filter FilterSet
-│       ├── services.py         # OpenAI classification logic
+│       ├── services.py         # Gemini LLM classification logic + prompt
+│       ├── tests.py            # Model and API endpoint tests
 │       ├── urls.py             # DRF router
 │       ├── admin.py
 │       └── apps.py
@@ -174,9 +205,9 @@ support-ticket-system/
 │   │   └── index.html
 │   └── src/
 │       ├── index.js
-│       ├── index.css           # Complete CSS (no framework needed)
-│       ├── App.js
-│       ├── api.js              # Axios API client
+│       ├── index.css           # Complete CSS with variables
+│       ├── App.js              # Root component with refresh logic
+│       ├── api.js              # Axios API client (named exports)
 │       └── components/
 │           ├── TicketForm.js    # Create ticket + AI auto-classify
 │           ├── TicketList.js    # Filterable list + status update modal
@@ -187,17 +218,13 @@ support-ticket-system/
 
 ## Development
 
-To stop services:
 ```bash
+# Stop services
 docker-compose down
-```
 
-To stop and remove volumes (database data):
-```bash
+# Stop and remove volumes (database data)
 docker-compose down -v
-```
 
-To rebuild after code changes:
-```bash
+# Rebuild after code changes
 docker-compose up --build
 ```
